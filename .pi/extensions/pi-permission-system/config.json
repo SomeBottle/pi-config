@@ -1,0 +1,283 @@
+{
+  "permission": {
+    "*": "allow",
+    
+    "path": {
+      "*": "allow",
+
+      "*.git/*": "ask",
+
+      "*.env": "ask",
+      "*.env.*": "ask",
+      "*.env.example": "allow",
+      "*.env.sample": "allow",
+      "*.env.template": "allow",
+
+      "*.pem": {
+        "action": "deny",
+        "reason": "Private-key or certificate material must be inspected manually."
+      },
+      "*.key": {
+        "action": "deny",
+        "reason": "Private-key material must not be exposed to the agent."
+      },
+      "*.p12": "deny",
+      "*.pfx": "deny",
+      "*.jks": "deny",
+      "*.keystore": "deny",
+      "*.kdbx": "deny",
+
+      "*.npmrc": "ask",
+      "*.pypirc": "ask",
+
+      "~/.ssh/*": {
+        "action": "deny",
+        "reason": "SSH keys and configuration are protected."
+      },
+      "~/.gnupg/*": "deny",
+
+      "~/.aws/*": "ask",
+      "~/.aws/credentials": "deny",
+      "~/.aws/sso/cache/*": "deny",
+      "~/.config/gcloud/*": "deny",
+      "~/.azure/*": "deny",
+      "~/.kube/*": "deny",
+
+      "~/.docker/config.json": "deny",
+      "~/.config/gh/*": "deny",
+      "~/.git-credentials": "deny",
+      "~/.netrc": "deny",
+      "~/.npmrc": "deny",
+      "~/.pypirc": "deny",
+      "~/.gem/credentials": "deny",
+      "~/.config/rclone/*": "deny",
+
+      "~/.bash_history": "deny",
+      "~/.zsh_history": "deny",
+      "~/.local/share/fish/fish_history": "deny",
+      "~/.local/share/keyrings/*": "deny",
+      "~/Library/Keychains/*": "deny",
+
+      "/etc/shadow": "deny",
+      "/etc/gshadow": "deny",
+      "/proc/*/environ": "deny"
+    },
+
+    "external_directory": {
+      "*": "ask",
+
+      "/tmp/*": "allow",
+      "/private/tmp/*": "allow",
+
+      "~/.npm/_cacache/*": "allow",
+      "~/.pnpm-store/*": "allow",
+      "~/.local/share/pnpm/store/*": "allow",
+      "~/.cargo/registry/*": "allow",
+      "~/go/pkg/mod/*": "allow"
+    },
+
+    "bash": {
+      "*": "allow",
+
+      "printenv *": "ask",
+      "env *": "ask",
+      "set": "ask",
+      "export": "ask",
+      "export -p*": "ask",
+      "declare -p*": "ask",
+      "typeset -p*": "ask",
+      "echo *$*": "ask",
+      "printf *$*": "ask",
+      "node *process.env*": "ask",
+      "python *os.environ*": "ask",
+      "python3 *os.environ*": "ask",
+      "source *": "ask",
+      ". *": "ask",
+      "direnv *": "ask",
+      "dotenv *": "ask",
+
+      "eval *": {
+        "action": "deny",
+        "reason": "eval obscures the command that will actually execute."
+      },
+      "bash -c *": "ask",
+      "sh -c *": "ask",
+      "zsh -c *": "ask",
+      "fish -c *": "ask",
+      "powershell *": "ask",
+      "pwsh *": "ask",
+
+      "git *": "ask",
+
+      "git status *": "allow",
+      "git diff *": "allow",
+      "git log *": "allow",
+      "git show *": "allow",
+      "git blame *": "allow",
+      "git grep *": "allow",
+      "git ls-files *": "allow",
+      "git rev-parse *": "allow",
+      "git describe *": "allow",
+      "git name-rev *": "allow",
+      "git shortlog *": "allow",
+      "git branch": "allow",
+      "git branch --show-current": "allow",
+      "git remote -v": "allow",
+      "git remote get-url *": "allow",
+      "git tag --list *": "allow",
+      "git stash list *": "allow",
+      "git worktree list *": "allow",
+      "git submodule status *": "allow",
+
+      "git reset --hard *": {
+        "action": "deny",
+        "reason": "Hard reset can irreversibly discard uncommitted work."
+      },
+      "git push *--force*": {
+        "action": "deny",
+        "reason": "Force-pushing must be performed manually."
+      },
+      "git push -f*": {
+        "action": "deny",
+        "reason": "Force-pushing must be performed manually."
+      },
+      "git push --mirror *": "deny",
+      "git branch -D *": "deny",
+      "git checkout -f *": "deny",
+      "git switch -f *": "deny",
+      "git reflog expire *": "deny",
+      "git gc --prune=now *": "deny",
+
+      "git clean *": {
+        "action": "deny",
+        "reason": "git clean deletes untracked files; use a dry run or run it manually."
+      },
+      "git clean -n *": "allow",
+      "git clean --dry-run *": "allow",
+
+      "rm *": "ask",
+      "rmdir *": "ask",
+      "unlink *": "ask",
+      "truncate *": "ask",
+      "shred *": "deny",
+
+      "rm *--no-preserve-root*": "deny",
+      "rm * /": "deny",
+      "rm * ~": "deny",
+      "rm * $HOME": "deny",
+      "rm * .git": "deny",
+      "rm * .git/*": "deny",
+
+      "dd *": {
+        "action": "deny",
+        "reason": "Raw block-copy operations are too destructive for unattended execution."
+      },
+      "mkfs *": "deny",
+      "fdisk *": "deny",
+      "parted *": "deny",
+      "diskutil erase*": "deny",
+      "mount *": "ask",
+      "umount *": "ask",
+
+      "chmod *": "ask",
+      "chmod +x *": "allow",
+      "chmod u+x *": "allow",
+      "chmod a+x *": "allow",
+      "chmod 777 *": "deny",
+      "chmod -R 777 *": "deny",
+      "chown *": "ask",
+      "chgrp *": "ask",
+
+      "sudo *": "ask",
+      "doas *": "ask",
+      "su *": "deny",
+
+      "kill *": "ask",
+      "pkill *": "ask",
+      "killall *": "ask",
+
+      "systemctl *": "ask",
+      "service *": "ask",
+      "launchctl *": "ask",
+      "crontab *": "ask",
+      "osascript *": "ask",
+      "security *": "ask",
+      "defaults write *": "ask",
+
+      "curl *": "ask",
+      "wget *": "ask",
+      "ssh *": "ask",
+      "scp *": "ask",
+      "sftp *": "ask",
+      "rsync *": "ask",
+      "ftp *": "ask",
+      "nc *": "ask",
+      "ncat *": "ask",
+      "socat *": "ask",
+
+      "gh *": "ask",
+      "gh status *": "allow",
+      "gh repo view *": "allow",
+      "gh pr list *": "allow",
+      "gh pr view *": "allow",
+      "gh issue list *": "allow",
+      "gh issue view *": "allow",
+      "gh run list *": "allow",
+      "gh run view *": "allow",
+
+      "npm publish *": "ask",
+      "pnpm publish *": "ask",
+      "yarn npm publish *": "ask",
+      "cargo publish *": "ask",
+      "gem push *": "ask",
+      "twine upload *": "ask",
+      "docker login *": "ask",
+      "docker push *": "ask",
+
+      "aws *": "ask",
+      "gcloud *": "ask",
+      "az *": "ask",
+      "kubectl *": "ask",
+      "helm *": "ask",
+
+      "terraform apply *": "ask",
+      "terraform import *": "ask",
+      "terraform state *": "ask",
+      "terraform taint *": "ask",
+      "terraform destroy *": "deny",
+
+      "pulumi up *": "ask",
+      "pulumi destroy *": "deny",
+      "ansible-playbook *": "ask",
+
+      "psql *": "ask",
+      "mysql *": "ask",
+      "mongosh *": "ask",
+      "redis-cli *": "ask",
+
+      "npm install -g *": "ask",
+      "npm uninstall -g *": "ask",
+      "pnpm add -g *": "ask",
+      "pnpm remove -g *": "ask",
+      "yarn global *": "ask",
+
+      "pip install *": "ask",
+      "pip uninstall *": "ask",
+      "pip3 install *": "ask",
+      "pip3 uninstall *": "ask",
+
+      "gem install *": "ask",
+      "gem uninstall *": "ask",
+      "cargo install *": "ask",
+      "cargo uninstall *": "ask",
+
+      "brew install *": "ask",
+      "brew uninstall *": "ask",
+      "apt *": "ask",
+      "apt-get *": "ask",
+      "dnf *": "ask",
+      "yum *": "ask",
+      "pacman *": "ask"
+    }
+  }
+}
