@@ -20,7 +20,7 @@ description: Reusable subagent loop. Use only when explicitly requested by the u
 
 1. 下方所有 Shell 命令在展开占位符的时候可能需要进行转义等处理来确保顺利执行。注释写的 IF ELSE 条件分支**需要你自己根据情况选择命令执行**，而不是转换为 Shell 的条件分支语句。
 2. 从 **STEP-0** 开始。  
-3. 必须在 STEP 之间流转，**不允许使用 Shell 循环语句来实现轮询**。
+3. 必须在 STEP 和 STEP 之间流转，**不允许使用 shell 循环语句来实现轮询**。
 4. 当**用户明确说明要终止或者尝试执行其他任务时**，直接跳到 STEP-4。  
 
 ## STEP-0

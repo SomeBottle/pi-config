@@ -20,7 +20,7 @@ Choose appropriate values if the user does not provide them.
 
 1. The Shell commands below may require escaping or other handling when expanding placeholders. The IF/ELSE branches in comments **must be selected and executed based on the situation**, not converted into Shell conditionals.  
 2. Start from **STEP-0**.
-3. You must flow through the STEPs; **do not use Shell loops to implement polling**. 
+3. You must transition from one STEP to another STEP. **Polling must not be implemented using shell loops**.
 4. When the **user explicitly asks to stop or attempts to start other tasks**, go directly to STEP-4.  
 
 ## STEP-0
