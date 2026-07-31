@@ -11,7 +11,7 @@ Start a subagent and poll for its output until it completes or timeout is reache
 
 * `{TMP_DIR}` - Available temporary directory
 * `{NAME}` - Subagent name
-* `{MESSAGE}` - Initial message for the subagent
+* `{PROMPT}` - Initial message for the subagent
 * `{TIMEOUT_S}` - Subagent execution timeout, in seconds
 
 Choose appropriate values if the user does not provide them.
@@ -20,7 +20,8 @@ Choose appropriate values if the user does not provide them.
 
 1. The Shell commands below may require escaping or other handling when expanding placeholders. The IF/ELSE branches in comments **must be selected and executed based on the situation**, not converted into Shell conditionals.  
 2. Start from **STEP-0**.
-3. When the **user explicitly asks to stop or attempts to start other tasks**, go directly to STEP-4.  
+3. You must flow through the STEPs; **do not use Shell loops to implement polling**. 
+4. When the **user explicitly asks to stop or attempts to start other tasks**, go directly to STEP-4.  
 
 ## STEP-0
 
@@ -32,8 +33,9 @@ Choose appropriate values if the user does not provide them.
 {START_TIME_PATH}="{TMP_DIR}/{SESSION_NAME}.start"
 
 # Example Pi launch command
-{PI_COMMAND}="pi --session {SESSION_PATH} --append-system-prompt 'You must write final report to {OUTPUT_PATH}.' '{MESSAGE}'"
-# Common options before {MESSAGE}, only use if needed or explicitly specified:
+# Must instruct the subagent to output reports or other artifacts in the system prompt
+{PI_COMMAND}="pi --session {SESSION_PATH} --approve --no-extensions --append-system-prompt 'You must write final report to {OUTPUT_PATH}.' '{PROMPT}'"
+# Common options before {PROMPT}, only use if needed or explicitly specified:
 # --model <pattern> selects a model; use pi --list-models to view available models
 # --thinking <off|minimal|low|medium|high|xhigh|max> sets the reasoning level
 # --print prints the result and exits; see the STEP-1 below
@@ -59,7 +61,7 @@ date +%s > {START_TIME_PATH}
 
 ### STEP-2
 
-Set the wait time based on subagent efficiency, within [5, 60] seconds.
+Set the wait time based on subagent efficiency, within [5, 30] seconds.
 
 ```bash
 sleep 5s
