@@ -11,7 +11,7 @@ description: Reusable subagent loop. Use only when explicitly requested by the u
 
 * `{TMP_DIR}` - 可用的临时文件目录
 * `{NAME}` - Subagent 名
-* `{MESSAGE}` - Subagent 初始消息
+* `{PROMPT}` - Subagent 初始消息
 * `{TIMEOUT_S}` - Subagent 执行超时时间 (秒)
 
 如用户未定义，你自行决定。
@@ -20,7 +20,8 @@ description: Reusable subagent loop. Use only when explicitly requested by the u
 
 1. 下方所有 Shell 命令在展开占位符的时候可能需要进行转义等处理来确保顺利执行。注释写的 IF ELSE 条件分支**需要你自己根据情况选择命令执行**，而不是转换为 Shell 的条件分支语句。
 2. 从 **STEP-0** 开始。  
-3. 当**用户明确说明要终止或者尝试执行其他任务时**，直接跳到 STEP-4。  
+3. 必须在 STEP 和 STEP 之间流转，**不允许使用 shell 循环语句来实现轮询**。
+4. 当**用户明确说明要终止或者尝试执行其他任务时**，直接跳到 STEP-4。  
 
 ## STEP-0
 
@@ -32,8 +33,9 @@ description: Reusable subagent loop. Use only when explicitly requested by the u
 {START_TIME_PATH}="{TMP_DIR}/{SESSION_NAME}.start"
 
 # 示例 Pi 实例启动命令
-{PI_COMMAND}="pi --session {SESSION_PATH} --append-system-prompt 'You must write final report to {OUTPUT_PATH}.' '{MESSAGE}'"
-# {MESSAGE} 之前还有这些常用参数，仅在必要或者显式指定时使用: 
+# 必须在系统提示中让 subagent 输出报告等产物
+{PI_COMMAND}="pi --session {SESSION_PATH} --approve --no-extensions --append-system-prompt 'You must write final report to {OUTPUT_PATH}.' '{PROMPT}'"
+# {PROMPT} 之前还有这些常用参数，仅在必要或者显式指定时使用: 
 # --model <pattern> 指定模型，可用 pi --list-models 查看可用模型
 # --thinking <off|minimal|low|medium|high|xhigh|max> 指定思考级别
 # --print 打印结果然后退出，见下方 STEP-1
@@ -59,7 +61,7 @@ date +%s > {START_TIME_PATH}
 
 ### STEP-2
 
-根据 subagent 执行速度自行设定等待时间，时间范围 [5, 60] 秒。  
+根据 subagent 执行速度自行设定等待时间，时间范围 [5, 30] 秒。  
 
 ```bash
 sleep 5s
