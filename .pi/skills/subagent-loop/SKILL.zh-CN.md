@@ -18,7 +18,11 @@ description: Reusable subagent loop. Use only when explicitly requested by the u
 
 ## 主流程（由主 Agent 执行）
 
-下方所有 Shell 命令在展开占位符的时候可能需要进行转义等处理来确保顺利执行。注释写的 IF ELSE 条件分支**需要你自己根据情况选择命令执行**，而不是转换为 Shell 的条件分支语句。
+1. 下方所有 Shell 命令在展开占位符的时候可能需要进行转义等处理来确保顺利执行。注释写的 IF ELSE 条件分支**需要你自己根据情况选择命令执行**，而不是转换为 Shell 的条件分支语句。
+2. 从 **STEP-0** 开始。  
+3. 当**用户明确说明要终止或者尝试执行其他任务时**，直接跳到 STEP-4。  
+
+## STEP-0
 
 ```bash
 # 定义占位符
@@ -84,7 +88,7 @@ tail -n 5 {SESSION_PATH}
 
 ### STEP-4
 
-当文件 `OUTPUT_PATH` 存在或者**用户显式终止时**或者超时时到达这一步。  
+当文件 `{OUTPUT_PATH}` 存在或者**用户显式终止时**或者超时时到达这一步。  
 
 ```bash
 cat {OUTPUT_PATH} 2>/dev/null
