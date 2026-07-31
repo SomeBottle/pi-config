@@ -18,7 +18,11 @@ Choose appropriate values if the user does not provide them.
 
 ## Main Flow (run by the main agent)
 
-The Shell commands below may require escaping or other handling when expanding placeholders. The IF/ELSE branches in comments **must be selected and executed based on the situation**, not converted into Shell conditionals.
+1. The Shell commands below may require escaping or other handling when expanding placeholders. The IF/ELSE branches in comments **must be selected and executed based on the situation**, not converted into Shell conditionals.  
+2. Start from **STEP-0**.
+3. When the **user explicitly asks to stop or attempts to start other tasks**, go directly to STEP-4.  
+
+## STEP-0
 
 ```bash
 # Define placeholders
