@@ -5,100 +5,55 @@ description: Reusable subagent loop. Use only when explicitly requested by the u
 
 # Subagent Loop
 
-Start a subagent and poll for its output until it completes or timeout is reached.
+Start a subagent and poll for its output until it completes or times out.
 
-## Placeholders
-
-* `{TMP_DIR}` - Available temporary directory
-* `{NAME}` - Subagent name
-* `{PROMPT}` - Initial message for the subagent
-* `{TIMEOUT_S}` - Subagent execution timeout, in seconds
-
-Choose appropriate values if the user does not provide them.
+* `{SD}` is the directory containing this SKILL.md.
 
 ## Main Flow (run by the main agent)
 
-1. The Shell commands below may require escaping or other handling when expanding placeholders. The IF/ELSE branches in comments **must be selected and executed based on the situation**, not converted into Shell conditionals.  
-2. Start from **STEP-0**.
-3. You must transition from one STEP to another STEP. **Polling must not be implemented using shell loops**.
-4. When the **user explicitly asks to stop or attempts to start other tasks**, go directly to STEP-4.  
+1. Start from **STEP-0**.
+2. You must transition from one STEP to another. **Only the `loop.sh` script may be executed, and reading its contents is not allowed**.
+3. When the **user explicitly asks to stop or attempts to start other tasks**, go directly to **STEP-2**.
 
-## STEP-0
-
-```bash
-# Define placeholders
-{SESSION_NAME}=subagent-{NAME}-$(date +%s)
-{SESSION_PATH}="{TMP_DIR}/{SESSION_NAME}.jsonl"
-{OUTPUT_PATH}="{TMP_DIR}/{SESSION_NAME}.o.md"
-{START_TIME_PATH}="{TMP_DIR}/{SESSION_NAME}.start"
-
-# Example Pi launch command
-# Must instruct the subagent to output reports or other artifacts in the system prompt
-{PI_COMMAND}="pi --session {SESSION_PATH} --approve --no-extensions --append-system-prompt 'You must write final report to {OUTPUT_PATH}.' '{PROMPT}'"
-# Common options before {PROMPT}, only use if needed or explicitly specified:
-# --model <pattern> selects a model; use pi --list-models to view available models
-# --thinking <off|minimal|low|medium|high|xhigh|max> sets the reasoning level
-# --print prints the result and exits; see the STEP-1 below
-
-(Go to STEP-1)
-```
-
-### STEP-1
+### STEP-0 INIT
 
 ```bash
-# IF [ tmux or psmux is available ]:
-tmux new-session -d -s {SESSION_NAME} {PI_COMMAND}
-(Go to STEP-2)
-# ELIF [ GNU Screen is available ]:
-screen -dmS {SESSION_NAME} {PI_COMMAND}
-(Go to STEP-2)
-# ELSE:
-(Add --print to {PI_COMMAND} and run it; this blocks until the subagent completes)
-(Go to STEP-4)
-# FI
-date +%s > {START_TIME_PATH}
+# <name> - subagent name
+# <timeout-s> - subagent execution timeout (seconds)
+# [pi-opts...] - pi options, use only when needed or explicitly specified:
+#   --model <pattern> selects a model; use pi --list-models to view available models
+#   --thinking <off|minimal|low|medium|high|xhigh|max> sets the reasoning level
+bash {SD}/scripts/loop.sh init <name> <timeout-s> [pi-opts...] <<'EOF'
+<subagent instructions prompt>
+EOF
+# Output: session, tmp, poll
 ```
 
-### STEP-2
+* poll=true -> go **STEP-1**
+* poll=false -> go **STEP-2**
 
-Set the wait time based on subagent efficiency, within [5, 30] seconds.
+### STEP-1 POLL
 
 ```bash
-sleep 5s
-(Go to STEP-3)
+# <sleep-s> - polling interval (seconds), 5-30
+# <session>, <tmp> - the values obtained in STEP-0
+# [tail-n] optional, number of trailing session log lines to return, default 5
+bash {SD}/scripts/loop.sh poll <sleep-s> <session> <tmp> [tail-n]
+# Output: running | finished | timeout
 ```
 
-### STEP-3
+* running -> run **STEP-1** again
+* finished -> go **STEP-2**
+* timeout -> subagent timed out, go **STEP-2**
+
+### STEP-2 END
 
 ```bash
-(( $(date +%s) - $(cat {START_TIME_PATH}) > {TIMEOUT_S} )) && echo "timeout"
-# IF [ output is timeout ]:
-(Go to STEP-4 due to timeout)
-# FI
-
-test -f {OUTPUT_PATH} && echo "ok"
-# IF [ output is ok ]:
-echo 'Subagent report path: {OUTPUT_PATH}'
-(Go to STEP-4)
-# ELSE:
-tail -n 5 {SESSION_PATH}
-(Go to STEP-2)
-# FI
+# <session>, <tmp> - the values obtained in STEP-0
+bash {SD}/scripts/loop.sh end <session> <tmp>
+# Output: the report (if exists) and the sub-agent session file path
 ```
 
-If the last few log lines are insufficient, run `tail` again with a larger `-n` value.
+This step cleans up the background session and its files; **this step must be executed at the end of the lifecycle**.
 
-### STEP-4
-
-Reach this step when `{OUTPUT_PATH}` exists or **the user explicitly stops the process** or **a timeout occurs**.
-
-```bash
-cat {OUTPUT_PATH} 2>/dev/null
-# IF [ tmux or psmux is available ]:
-tmux kill-session -t {SESSION_NAME}
-# ELIF [ GNU Screen is available ]:
-screen -S {SESSION_NAME} -X quit
-# FI
-```
-
-Inform the user if the flow ends due to a timeout.
+If the flow ended due to a timeout (usually no report), inform the user.
