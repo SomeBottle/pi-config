@@ -35,10 +35,9 @@ EOF
 ### STEP-1 POLL
 
 ```bash
-# <sleep-s> 为轮询间隔时间（秒），5-30
+# <sleep-s> 为轮询间隔时间（秒），15-60
 # <session>, <tmp> 填入 STEP-0 中获得的值
-# [tail-n] 可选，指定返回 sub-agent 会话末多少条，默认 5
-bash {SD}/scripts/loop.sh poll <sleep-s> <session> <tmp> [tail-n]
+bash {SD}/scripts/loop.sh poll <sleep-s> <session> <tmp>
 # 输出 running | finished | timeout
 ```
 
