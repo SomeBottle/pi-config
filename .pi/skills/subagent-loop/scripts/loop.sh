@@ -2,13 +2,12 @@
 set -euo pipefail
 
 # Sub-agent 最后一行连续未变化 STALL_LIMIT 轮判定为卡住
-STALL_LIMIT=4
+STALL_LIMIT=5
 
 usage() {
     echo "usage: $0 <cmd> ... < stdin" >&2
     echo "  init <name> <timeout-s> [pi-opts...]  stdin: PROMPT | stdout: 'session: X' 'tmp: Y' 'poll: true|false'" >&2
-    echo "  poll <sleep-s:[5,30]> <session> <tmp> [tail-n=5] stdout: running | finished | timeout" >&2
-    echo "                              (running: prints log tail tail-n lines; warns if last line unchanged for $STALL_LIMIT consecutive polls)" >&2
+    echo "  poll <sleep-s:[15,60]> <session> <tmp> stdout: running | finished | timeout" >&2
     echo "  end <session> <tmp>           stdout: report | stderr: report not found" >&2
     exit 1
 }
@@ -74,16 +73,15 @@ elif [[ ${1:-} == poll ]]; then
     sleep_s=${2:-}
     session=${3:-}
     tmp_dir=${4:-}
-    tail_n=${5:-5}
     if [[ -z $sleep_s || -z $session || -z $tmp_dir ]]; then
         usage
     fi
-    if [[ ! $sleep_s =~ ^[0-9]+$ || ! $tail_n =~ ^[0-9]+$ ]]; then
-        echo "error: <sleep-s> and <tail-n> must be numbers" >&2
+    if [[ ! $sleep_s =~ ^[0-9]+$ ]]; then
+        echo "error: <sleep-s> must be a number" >&2
         exit 1
     fi
-    if (( sleep_s < 5 || sleep_s > 30 )); then
-        echo "error: <sleep-s> must be in [5, 30]" >&2
+    if (( sleep_s < 15 || sleep_s > 60 )); then
+        echo "error: <sleep-s> must be in [15, 60]" >&2
         exit 1
     fi
     if [[ ! -f $tmp_dir/$session.start || ! -f $tmp_dir/$session.timeout ]]; then
@@ -102,8 +100,6 @@ elif [[ ${1:-} == poll ]]; then
         echo "finished"
     else
         echo "running"
-        echo "--- sub-agent session (last $tail_n lines) ---"
-        tail -n "$tail_n" "$tmp_dir/$session.jsonl" 2>/dev/null || true
 
         # 阻塞检测: session 文件最后一行连续 STALL_LIMIT 轮未变化则提醒 (状态存 .lastline / .stallcnt)
         last_file=$tmp_dir/$session.lastline
@@ -114,7 +110,7 @@ elif [[ ${1:-} == poll ]]; then
             if [[ -f $last_file ]] && [[ $(cat "$last_file") == "$last" ]]; then
                 cnt=$((cnt + 1))
                 if (( cnt >= STALL_LIMIT )); then
-                    echo "warning: sub-agent may be stuck (last line unchanged for $STALL_LIMIT consecutive polls), user intervention needed"
+                    echo "warning: sub-agent may be stuck (last session line unchanged for $STALL_LIMIT consecutive polls), user intervention needed"
                 fi
             else
                 cnt=0

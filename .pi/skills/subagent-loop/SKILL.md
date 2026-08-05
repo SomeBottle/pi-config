@@ -35,10 +35,9 @@ EOF
 ### STEP-1 POLL
 
 ```bash
-# <sleep-s> - polling interval (seconds), 5-30
+# <sleep-s> - polling interval (seconds), 15-60
 # <session>, <tmp> - the values obtained in STEP-0
-# [tail-n] optional, number of trailing session log lines to return, default 5
-bash {SD}/scripts/loop.sh poll <sleep-s> <session> <tmp> [tail-n]
+bash {SD}/scripts/loop.sh poll <sleep-s> <session> <tmp>
 # Output: running | finished | timeout
 ```
 
