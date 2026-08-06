@@ -18,7 +18,7 @@ Start a subagent and poll for its output until it completes or times out.
 ### STEP-0 INIT
 
 ```bash
-# <name> - subagent name
+# <name> - subagent name (kebab-case)
 # <timeout-s> - subagent execution timeout (seconds)
 # [pi-opts...] - pi options, use only when needed or explicitly specified:
 #   --model <pattern> selects a model; use pi --list-models to view available models
