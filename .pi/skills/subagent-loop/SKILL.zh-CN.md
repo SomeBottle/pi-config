@@ -18,7 +18,7 @@ description: Reusable subagent loop. Use only when explicitly requested by the u
 ### STEP-0 INIT
 
 ```bash
-# <name> 为 sub-agent 名
+# <name> 为 sub-agent 名 (kebab-case)
 # <timeout-s> 为 sub-agent 执行超时时间 (秒)
 # [pi-opts...] 为 pi 选项，仅需要时或用户指定时使用:  
 #   --model <pattern> 指定模型，可用 pi --list-models 查看可用模型
