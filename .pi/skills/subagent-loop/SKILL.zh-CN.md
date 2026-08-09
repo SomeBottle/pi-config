@@ -1,6 +1,6 @@
 ---
 name: subagent-loop
-description: Reusable subagent loop. Use only when explicitly requested by the user.  
+description: Reusable subagent loop. Use only when explicitly requested by the user. Parallel is not supported, one subagent at a time. 
 ---
 
 # Subagent Loop
