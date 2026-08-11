@@ -3,7 +3,7 @@ description: Run a project/code exploration sub-agent.
 argument-hint: <instructions>
 ---
 
-Use the `subagent-loop` skill to launch a sub-agent that explores the project/codebase based on the following instructions: 
+Use the `subagent-loop` skill to launch one or more sub-agents that explores the project/codebase based on the following instructions: 
 
 $@
 
