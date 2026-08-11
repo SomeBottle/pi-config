@@ -49,9 +49,9 @@ bash {SD}/scripts/loop.sh poll <group>
     ```
 
 #### Next
-* ANY (running | stuck) -> run **STEP-1** again.
+* (**ANY** AGENT running | stuck) -> run **STEP-1** again.
   * The **main agent** may continue tasks that **do not depend on the subagents' results** (i.e., tasks that can proceed without their report or status), but must **interleave STEP-1 polls** among its tool calls.
-* ALL (finished | timeout | dead) and **timeout | dead have already been retried** -> **STEP-2**.
+* (**ALL** AGENTS finished | timeout | dead) AND (**timeout | dead have already been retried**) -> **STEP-2**.
   * If any subagent timed out, inform the user.
 
 ### STEP-2 CLEAN
