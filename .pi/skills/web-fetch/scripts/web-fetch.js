@@ -2,6 +2,8 @@
 
 /**
  * web-fetch.js — CLI tool to fetch and convert web pages to text/markdown/html.
+ * Proxy: automatically inherits HTTP_PROXY / HTTPS_PROXY / ALL_PROXY / NO_PROXY
+ * env vars (curl-style) via undici's ProxyAgent.
  *
  * Reference implementation from OpenCode:
  *   https://github.com/anomalyco/opencode/blob/0a601cf334b9a83cc2854108a2b860f25e6e7e8e/packages/opencode/src/tool/webfetch.ts
@@ -39,23 +41,41 @@ const SCRIPT_DIR = __dirname;
 const NODE_MODULES = path.join(SCRIPT_DIR, "node_modules");
 
 function ensureDeps() {
-  const missing = [];
-  if (!fs.existsSync(path.join(NODE_MODULES, "turndown"))) missing.push("turndown");
-  if (!fs.existsSync(path.join(NODE_MODULES, "htmlparser2"))) missing.push("htmlparser2");
-  if (!fs.existsSync(path.join(NODE_MODULES, "@mozilla"))) missing.push("@mozilla/readability");
-  if (!fs.existsSync(path.join(NODE_MODULES, "jsdom"))) missing.push("jsdom");
+  // NOTE: installs the FULL set in one command. npm treats `--no-save`
+  // packages as extraneous and prunes them on later partial installs, so
+  // installing only what's missing would make dependencies thrash across runs.
+  const deps = ["turndown", "htmlparser2", "@mozilla/readability", "jsdom"];
+  if (hasProxyConfig()) deps.push("undici@7"); // see the "Proxy support" section below
 
-  if (missing.length > 0) {
-    console.error(`[web-fetch] Installing dependencies: ${missing.join(", ")}...`);
-    execSync(`npm install ${missing.join(" ")} --no-save --silent`, {
-      cwd: SCRIPT_DIR,
-      stdio: "pipe",
-    });
-    console.error("[web-fetch] Done.");
-  }
+  const missing = deps.filter((dep) => !isInstalled(dep));
+  if (missing.length === 0) return;
+
+  console.error(`[web-fetch] Installing dependencies: ${missing.join(", ")}...`);
+  execSync(`npm install ${deps.join(" ")} --no-save --silent`, {
+    cwd: SCRIPT_DIR,
+    stdio: "pipe",
+  });
+  console.error("[web-fetch] Done.");
 }
 
 ensureDeps();
+
+/**
+ * Check whether a dependency is actually present and loadable.
+ * Handles version specs ("undici@7" → undici) and guards against empty
+ * scope dirs left behind by interrupted installs.
+ */
+function isInstalled(dep) {
+  const name = dep.startsWith("@") ? dep : dep.replace(/@.*$/, "");
+  try {
+    const { version } = require(path.join(NODE_MODULES, name, "package.json"));
+    // undici is pinned to major 7: newer majors broke the dispatcher contract
+    // with the fetch built into Node (see the "Proxy support" section below).
+    return dep.startsWith("undici@") ? Number(String(version).split(".")[0]) === 7 : true;
+  } catch {
+    return false;
+  }
+}
 
 const TurndownService = require("turndown");
 const { Parser } = require("htmlparser2");
@@ -84,6 +104,12 @@ Options:
 Examples:
   node web-fetch.js https://example.com
   node web-fetch.js https://example.com --format text --timeout 10
+
+Proxy:
+  Proxy settings are inherited from the environment automatically (as curl does):
+    HTTP_PROXY / http_proxy, HTTPS_PROXY / https_proxy, ALL_PROXY / all_proxy
+  Bypass hosts with NO_PROXY / no_proxy (comma-separated list). When no proxy
+  env vars are set, requests go direct. Uses undici (auto-installed on demand).
 
 Output is JSON to stdout:
   { "ok": true, "url": "...", "format": "markdown", "output": "...", ... }
@@ -215,6 +241,105 @@ function convertHTMLToMarkdown(html) {
 }
 
 // ---------------------------------------------------------------------------
+// Proxy support — inherit HTTP(S)_PROXY / ALL_PROXY / NO_PROXY env vars
+// ---------------------------------------------------------------------------
+
+// Node's built-in fetch ignores proxy environment variables, so when a proxy
+// is configured we route requests through undici's ProxyAgent via the
+// `dispatcher` option instead.
+
+const proxyAgentCache = new Map(); // proxy URI -> ProxyAgent instance (or null)
+
+/**
+ * Read proxy settings from the environment, curl-style:
+ *   HTTP_PROXY / http_proxy     proxy for http:// URLs
+ *   HTTPS_PROXY / https_proxy   proxy for https:// URLs
+ *   ALL_PROXY / all_proxy       fallback for either scheme
+ *   NO_PROXY / no_proxy         comma-separated hosts to bypass the proxy
+ */
+function getProxyConfig() {
+  const env = process.env;
+  const allProxy = env.ALL_PROXY || env.all_proxy || "";
+  const normalize = (value) => {
+    const s = String(value || "").trim();
+    if (!s) return "";
+    return /^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : `http://${s}`;
+  };
+  return {
+    httpProxy: normalize(env.HTTP_PROXY || env.http_proxy || allProxy),
+    httpsProxy: normalize(env.HTTPS_PROXY || env.https_proxy || allProxy),
+    noProxy: String(env.NO_PROXY || env.no_proxy || "").trim(),
+  };
+}
+
+function hasProxyConfig() {
+  const { httpProxy, httpsProxy } = getProxyConfig();
+  return Boolean(httpProxy || httpsProxy);
+}
+
+/**
+ * Match a hostname against a NO_PROXY list. Entries are comma-separated and
+ * may be "example.com", ".example.com" (also matches the bare domain),
+ * "example.com:8080" (port ignored), or "*".
+ */
+function matchesNoProxy(hostname, noProxyList) {
+  if (!noProxyList) return false;
+  const host = hostname.toLowerCase();
+  for (const raw of noProxyList.split(",")) {
+    let entry = raw.trim().toLowerCase();
+    if (!entry) continue;
+    if (entry === "*") return true;
+    entry = entry.replace(/^[a-z][a-z0-9+.-]*:\/\//, "").split(":")[0];
+    if (!entry) continue;
+    if (entry.startsWith(".")) {
+      if (host === entry.slice(1) || host.endsWith(entry)) return true;
+    } else if (host === entry || host.endsWith(`.${entry}`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Return an undici ProxyAgent for the given URL, or null when no proxy applies
+ * (no proxy env vars, NO_PROXY match, unsupported scheme, or undici missing).
+ */
+function getProxyDispatcher(urlString) {
+  const { httpProxy, httpsProxy, noProxy } = getProxyConfig();
+  if (!httpProxy && !httpsProxy) return null;
+
+  let targetUrl;
+  try {
+    targetUrl = new URL(urlString);
+  } catch {
+    return null;
+  }
+  if (matchesNoProxy(targetUrl.hostname, noProxy)) return null;
+
+  const proxyUri =
+    targetUrl.protocol === "https:" ? httpsProxy || httpProxy : httpProxy || httpsProxy;
+  if (!proxyUri) return null;
+
+  if (/^socks/i.test(proxyUri)) {
+    console.error("[web-fetch] Warning: SOCKS proxies are not supported; fetching directly.");
+    return null;
+  }
+
+  if (!proxyAgentCache.has(proxyUri)) {
+    try {
+      const { ProxyAgent } = require("undici");
+      proxyAgentCache.set(proxyUri, new ProxyAgent(proxyUri));
+    } catch (e) {
+      console.error(
+        `[web-fetch] Warning: cannot use proxy \"${proxyUri}\" (${e.message}); fetching directly.`,
+      );
+      proxyAgentCache.set(proxyUri, null);
+    }
+  }
+  return proxyAgentCache.get(proxyUri);
+}
+
+// ---------------------------------------------------------------------------
 // Core fetch logic
 // ---------------------------------------------------------------------------
 
@@ -237,9 +362,16 @@ async function fetchUrl(url, format, timeoutSec, gross) {
   };
 
   // --- Perform request (with Cloudflare bot-detection retry) ---
+  const dispatcher = getProxyDispatcher(url);
+  const makeOptions = (extraHeaders) => {
+    const options = { headers: extraHeaders, signal, redirect: "follow" };
+    if (dispatcher) options.dispatcher = dispatcher; // route through proxy when configured
+    return options;
+  };
+
   let response;
   try {
-    response = await fetch(url, { headers, signal, redirect: "follow" });
+    response = await fetch(url, makeOptions(headers));
   } catch (e) {
     if (e.name === "TimeoutError" || e.name === "AbortError") {
       throw new Error(`Request timed out after ${timeoutSec}s`);
@@ -250,11 +382,7 @@ async function fetchUrl(url, format, timeoutSec, gross) {
   // Cloudflare challenge → retry once with honest UA
   if (response.status === 403 && response.headers.get("cf-mitigated") === "challenge") {
     try {
-      response = await fetch(url, {
-        headers: { ...headers, "User-Agent": "opencode" },
-        signal,
-        redirect: "follow",
-      });
+      response = await fetch(url, makeOptions({ ...headers, "User-Agent": "opencode" }));
     } catch (e) {
       if (e.name === "TimeoutError" || e.name === "AbortError") {
         throw new Error(`Request timed out after ${timeoutSec}s`);

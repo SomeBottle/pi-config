@@ -5,7 +5,8 @@ description: Supports fetching web content by sending requests directly from the
 
 # Web Fetch Skill
 
-{SD} is the directory containing this SKILL.md.
+* {SD} is the directory containing this SKILL.md.
+* Proxy envs can be used, such as `HTTPS_PROXY`, `HTTP_PROXY`, `ALL_PROXY`, `NO_PROXY`, etc.
 
 ## Fetch simplified URL page content
 
